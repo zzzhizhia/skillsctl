@@ -5,7 +5,12 @@ Enable/disable Claude Code skills interactively.
 ## Quick Start
 
 ```bash
+# one-off
 npx skillsctl
+
+# install globally
+npm install -g skillsctl
+skillsctl
 ```
 
 ## Usage
