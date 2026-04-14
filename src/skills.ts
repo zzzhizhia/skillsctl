@@ -24,6 +24,7 @@ export function listSkills(): Skill[] {
   mkdirSync(disabledDir, { recursive: true });
 
   const entries: Skill[] = [];
+  const seen = new Set<string>();
 
   const scan = (dir: string, enabled: boolean) => {
     let names: string[];
@@ -36,6 +37,8 @@ export function listSkills(): Skill[] {
     for (const name of names) {
       // Skip hidden files and the disabled directory itself
       if (name.startsWith(".") || (enabled && name === "disabled")) continue;
+      // Skip duplicates — root scan runs first, so root copy wins
+      if (seen.has(name)) continue;
 
       const fullPath = join(dir, name);
       let stat: ReturnType<typeof lstatSync>;
@@ -46,6 +49,7 @@ export function listSkills(): Skill[] {
       }
 
       if (stat.isSymbolicLink() || stat.isDirectory()) {
+        seen.add(name);
         entries.push({ name, enabled, isSymlink: stat.isSymbolicLink() });
       }
     }
@@ -70,7 +74,10 @@ export function disableSkill(name: string): void {
 export function enableSkill(name: string): void {
   const root = getSkillsDir();
   const disabledDir = getDisabledDir();
-  renameSync(join(disabledDir, name), join(root, name));
+  const dest = join(root, name);
+  // Remove stale destination left by a previous failed operation
+  if (existsSync(dest)) rmSync(dest, { recursive: true, force: true });
+  renameSync(join(disabledDir, name), dest);
 }
 
 export function applyChanges(
