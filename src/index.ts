@@ -45,6 +45,14 @@ async function main() {
       choices,
       pageSize: 25,
       loop: false,
+      theme: {
+        style: {
+          answer: (text: string) => {
+            const count = text.split(",").length;
+            return pc.dim(`${count} skill(s) selected`);
+          },
+        },
+      },
     });
   } catch (err) {
     const name = (err as Error)?.name;
