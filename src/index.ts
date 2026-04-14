@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { checkbox } from "@inquirer/prompts";
 import pc from "picocolors";
-import { listSkills, applyChanges, type Skill } from "./skills.js";
+import { listSkills, applyChanges, enableSkill, disableSkill, type Skill } from "./skills.js";
 
 function withQuit<C, T>(
   prompt: (config: C, context?: { signal?: AbortSignal }) => Promise<T>,
@@ -24,7 +24,48 @@ function skillLabel(skill: Skill): string {
   return pc.bold(skill.name) + symTag;
 }
 
-async function main() {
+function cmdList() {
+  const skills = listSkills();
+  if (skills.length === 0) {
+    console.log(pc.yellow("No skills found in ~/.claude/skills/"));
+    return;
+  }
+  for (const skill of skills) {
+    const tag = skill.isSymlink ? pc.dim(" [symlink]") : "";
+    const status = skill.enabled ? pc.green("✓") : pc.red("✗");
+    console.log(`${status} ${pc.bold(skill.name)}${tag}`);
+  }
+}
+
+function cmdEnable(names: string[]) {
+  const skills = listSkills();
+  const disabledMap = new Map(skills.filter((s) => !s.enabled).map((s) => [s.name, s]));
+  for (const name of names) {
+    if (!disabledMap.has(name)) {
+      const exists = skills.some((s) => s.name === name);
+      console.log(exists ? pc.dim(`${name}: already enabled`) : pc.yellow(`${name}: not found`));
+      continue;
+    }
+    enableSkill(name);
+    console.log(pc.green(`Enabled:  ${name}`));
+  }
+}
+
+function cmdDisable(names: string[]) {
+  const skills = listSkills();
+  const enabledMap = new Map(skills.filter((s) => s.enabled).map((s) => [s.name, s]));
+  for (const name of names) {
+    if (!enabledMap.has(name)) {
+      const exists = skills.some((s) => s.name === name);
+      console.log(exists ? pc.dim(`${name}: already disabled`) : pc.yellow(`${name}: not found`));
+      continue;
+    }
+    disableSkill(name);
+    console.log(pc.red(`Disabled: ${name}`));
+  }
+}
+
+async function cmdInteractive() {
   const skills = listSkills();
 
   if (skills.length === 0) {
@@ -71,12 +112,26 @@ async function main() {
     return;
   }
 
-  if (enabled.length > 0) {
-    console.log(pc.green("Enabled:  ") + enabled.join(", "));
+  if (enabled.length > 0) console.log(pc.green("Enabled:  ") + enabled.join(", "));
+  if (disabled.length > 0) console.log(pc.red("Disabled: ") + disabled.join(", "));
+}
+
+async function main() {
+  const [cmd, ...args] = process.argv.slice(2);
+
+  if (cmd === "list" || cmd === "ls") return cmdList();
+  if (cmd === "enable" || cmd === "on") return cmdEnable(args);
+  if (cmd === "disable" || cmd === "off") return cmdDisable(args);
+  if (cmd === "--help" || cmd === "-h") {
+    console.log(`Usage:
+  skillsctl                     interactive toggle
+  skillsctl list                list all skills with status
+  skillsctl enable <skill...>   enable one or more skills
+  skillsctl disable <skill...>  disable one or more skills`);
+    return;
   }
-  if (disabled.length > 0) {
-    console.log(pc.red("Disabled: ") + disabled.join(", "));
-  }
+
+  return cmdInteractive();
 }
 
 const currentFile = fileURLToPath(import.meta.url);
