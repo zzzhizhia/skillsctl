@@ -1,4 +1,4 @@
-import { readdirSync, lstatSync, mkdirSync, renameSync } from "node:fs";
+import { readdirSync, lstatSync, mkdirSync, renameSync, rmSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { homedir } from "node:os";
 
@@ -61,7 +61,10 @@ export function disableSkill(name: string): void {
   const root = getSkillsDir();
   const disabledDir = getDisabledDir();
   mkdirSync(disabledDir, { recursive: true });
-  renameSync(join(root, name), join(disabledDir, name));
+  const dest = join(disabledDir, name);
+  // Remove stale destination left by a previous failed operation
+  if (existsSync(dest)) rmSync(dest, { recursive: true, force: true });
+  renameSync(join(root, name), dest);
 }
 
 export function enableSkill(name: string): void {
