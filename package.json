@@ -1,0 +1,35 @@
+{
+  "name": "skillsctl",
+  "version": "1.0.0",
+  "description": "Enable/disable Claude Code skills interactively",
+  "type": "module",
+  "bin": {
+    "skillsctl": "./dist/index.mjs"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^7.5.2",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.2"
+  },
+  "license": "MIT",
+  "author": "zzzhizhi",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zzzhizhia/skillsctl.git"
+  },
+  "homepage": "https://github.com/zzzhizhia/skillsctl",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=20"
+  }
+}
