@@ -1,9 +1,17 @@
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
+import { spawnSync } from "node:child_process";
 import { checkbox } from "@inquirer/prompts";
 import pc from "picocolors";
-import { listSkills, applyChanges, enableSkill, disableSkill, type Skill } from "./skills.js";
+import {
+  listSkills,
+  applyChanges,
+  enableSkill,
+  disableSkill,
+  skillExistsInRoot,
+  type Skill,
+} from "./skills.js";
 
 function withQuit<C, T>(
   prompt: (config: C, context?: { signal?: AbortSignal }) => Promise<T>,
@@ -48,6 +56,40 @@ function cmdEnable(names: string[]) {
     }
     enableSkill(name);
     console.log(pc.green(`Enabled:  ${name}`));
+  }
+}
+
+function runSkillsUpdate(): number {
+  console.log(pc.dim("Running `skills update`..."));
+  let result = spawnSync("skills", ["update"], { stdio: "inherit" });
+  if (result.error && (result.error as NodeJS.ErrnoException).code === "ENOENT") {
+    console.log(pc.dim("`skills` not in PATH, falling back to `npx skills update`..."));
+    result = spawnSync("npx", ["skills", "update"], { stdio: "inherit" });
+  }
+  if (result.error) throw result.error;
+  return result.status ?? 1;
+}
+
+function cmdUpdate() {
+  const before = listSkills();
+  const previouslyDisabled = before.filter((s) => !s.enabled).map((s) => s.name);
+
+  const exitCode = runSkillsUpdate();
+  if (exitCode !== 0) {
+    console.log(pc.yellow(`\nskills update exited with code ${exitCode}`));
+    process.exit(exitCode);
+  }
+
+  const reDisabled: string[] = [];
+  for (const name of previouslyDisabled) {
+    if (skillExistsInRoot(name)) {
+      disableSkill(name);
+      reDisabled.push(name);
+    }
+  }
+
+  if (reDisabled.length > 0) {
+    console.log(pc.dim(`\nRe-disabled ${reDisabled.length} updated skill(s): ${reDisabled.join(", ")}`));
   }
 }
 
@@ -122,12 +164,14 @@ async function main() {
   if (cmd === "list" || cmd === "ls") return cmdList();
   if (cmd === "enable" || cmd === "on") return cmdEnable(args);
   if (cmd === "disable" || cmd === "off") return cmdDisable(args);
+  if (cmd === "update") return cmdUpdate();
   if (cmd === "--help" || cmd === "-h") {
     console.log(`Usage:
   skillsctl                     interactive toggle
   skillsctl list                list all skills with status
   skillsctl enable <skill...>   enable one or more skills
-  skillsctl disable <skill...>  disable one or more skills`);
+  skillsctl disable <skill...>  disable one or more skills
+  skillsctl update              run \`skills update\`, keep disabled skills disabled`);
     return;
   }
 

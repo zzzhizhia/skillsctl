@@ -80,6 +80,10 @@ export function enableSkill(name: string): void {
   renameSync(join(disabledDir, name), dest);
 }
 
+export function skillExistsInRoot(name: string): boolean {
+  return existsSync(join(getSkillsDir(), name));
+}
+
 export function applyChanges(
   current: Skill[],
   selectedNames: Set<string>,
